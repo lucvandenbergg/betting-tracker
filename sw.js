@@ -1,4 +1,4 @@
-const CACHE_NAME = 'betting-tracker-v1';
+const CACHE_NAME = 'betting-tracker-v2-fixed';
 const urlsToCache = [
   './',
   './betting_tracker_FINAL_with_firebase_webhooks.html',
