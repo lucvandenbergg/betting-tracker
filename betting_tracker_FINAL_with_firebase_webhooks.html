@@ -1,0 +1,2293 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <title>Betting Tracker Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin-bottom: 5px;
+            font-size: 32px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .session-bar {
+            background: #f8f9fa;
+            padding: 10px 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .session-info {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .session-item {
+            font-size: 14px;
+        }
+        
+        .session-item strong {
+            color: #667eea;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .tab-nav {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            overflow-x: auto;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        
+        .tab-button:hover {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.3s;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.blue {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .stat-card.danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .stat-value.large {
+            font-size: 36px;
+        }
+        
+        .section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        input[readonly] {
+            background: #f8f9fa;
+            cursor: not-allowed;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .button-group button {
+            flex: 1;
+            padding: 12px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .history-list {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .history-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #e0e0e0;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .history-item.win {
+            border-left-color: #00f2fe;
+        }
+        
+        .history-item.loss {
+            border-left-color: #f5576c;
+        }
+        
+        .history-item.void {
+            border-left-color: #6c757d;
+            opacity: 0.8;
+        }
+        
+        .history-item.pending {
+            border-left-color: #ff9a56;
+        }
+        
+        .tag {
+            display: inline-block;
+            background: #e0e0e0;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin: 0 5px 0 0;
+        }
+        
+        .tag.combo {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tag.void {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .text-success { color: #00f2fe; }
+        .text-danger { color: #f5576c; }
+        .text-muted { color: #666; }
+        .text-right { text-align: right; }
+        
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 0;
+        }
+        
+        .radio-group input[type="radio"] {
+            width: auto;
+            margin-right: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+            
+            .container {
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 20px 15px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .session-bar {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .session-info {
+                width: 100%;
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .tab-nav {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .tab-button {
+                font-size: 12px;
+                padding: 12px 15px;
+            }
+            
+            .tab-content {
+                padding: 15px;
+            }
+            
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .stat-card {
+                padding: 15px;
+            }
+            
+            .stat-value {
+                font-size: 24px;
+            }
+            
+            .stat-value.large {
+                font-size: 32px;
+            }
+            
+            .section {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .section-title {
+                font-size: 18px;
+            }
+            
+            .history-item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .history-item .text-right {
+                text-align: left;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .button-group button {
+                width: 100%;
+            }
+            
+            table {
+                font-size: 14px;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+            
+            input, select, textarea {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 Betting Tracker Pro</h1>
+            <p>Professioneel Bankroll Management Systeem</p>
+        </div>
+        
+        <div class="session-bar">
+            <div class="session-info">
+                <div class="session-item">
+                    <small style="color: #666;">Huidige Sessie:</small>
+                    <strong id="session-date"></strong>
+                </div>
+                <div class="session-item">
+                    <small style="color: #666;">Unit Waarde:</small>
+                    <strong>€<span id="session-unit">2.00</span></strong>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="updateSession()">🔄 Update Sessie</button>
+        </div>
+        
+        <div class="tab-nav">
+            <button class="tab-button active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab-button" onclick="switchTab('place-bet')">📝 Weddenschap</button>
+            <button class="tab-button" onclick="switchTab('stats')">📈 Statistieken</button>
+            <button class="tab-button" onclick="switchTab('history')">📜 Geschiedenis</button>
+            <button class="tab-button" onclick="switchTab('goals')">🎯 Doelen</button>
+            <button class="tab-button" onclick="switchTab('settings')">⚙️ Instellingen</button>
+        </div>
+        
+        <!-- DASHBOARD -->
+        <div id="dashboard" class="tab-content active">
+            <div class="alert alert-warning">
+                <strong>⚠️ Belangrijk:</strong> Gokken brengt risico's met zich mee. Wed alleen met geld dat je kunt missen.
+            </div>
+            
+            <!-- Top 4 metrics - Purple -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Huidige Bankroll</div>
+                    <div class="stat-value large" id="bankroll-display">€200.00</div>
+                </div>
+                <div class="stat-card" id="profit-card">
+                    <div class="stat-label">Totale Winst/Verlies</div>
+                    <div class="stat-value" id="profit-display">€0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Win Rate</div>
+                    <div class="stat-value" id="winrate-display">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Huidige Streak</div>
+                    <div class="stat-value" id="streak-display">-</div>
+                </div>
+            </div>
+            
+            <!-- Bottom 4 metrics - Blue -->
+            <div class="stats-grid">
+                <div class="stat-card blue">
+                    <div class="stat-label">Winst/Verlies Vandaag</div>
+                    <div class="stat-value" id="today-profit">€0.00</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-label">Weddenschappen Vandaag</div>
+                    <div class="stat-value" id="today-bets">0</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-label">Winst/Verlies Deze Week</div>
+                    <div class="stat-value" id="week-profit">€0.00</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-label">Weddenschappen Deze Week</div>
+                    <div class="stat-value" id="week-bets">0</div>
+                </div>
+            </div>
+            
+            <!-- Quick Bet -->
+            <div class="section">
+                <div class="section-title">⚡ Snelle Weddenschap</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Wedstrijd</label>
+                            <input type="text" id="quick-match" placeholder="Ajax - PSV">
+                        </div>
+                        <div class="input-group">
+                            <label>Competitie</label>
+                            <select id="quick-competition">
+                                <option value="Eredivisie">Eredivisie</option>
+                                <option value="Premier League">Premier League</option>
+                                <option value="Champions League">Champions League</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Confidence</label>
+                            <select id="quick-confidence">
+                                <option value="0.5">Twijfelachtig (0.5u)</option>
+                                <option value="1" selected>Normaal (1u)</option>
+                                <option value="2">Goed gevoel (2u)</option>
+                                <option value="3">Zeer zeker (3u)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Odds</label>
+                            <input type="number" id="quick-odds" value="2.00" step="0.01" min="1.01">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="quickBet('win')">✓ Gewonnen</button>
+                        <button class="btn btn-danger" onclick="quickBet('loss')">✗ Verloren</button>
+                        <button class="btn btn-secondary" onclick="quickBet('void')">⊘ Ongeldig</button>
+                        <button class="btn btn-primary" onclick="quickBet('pending')">📌 Plaatsen</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Open Bets -->
+            <div class="section" id="open-section" style="display: none;">
+                <div class="section-title">📌 Open Weddenschappen</div>
+                <div id="open-list"></div>
+            </div>
+            
+            <!-- Recent Bets -->
+            <div class="section">
+                <div class="section-title">📋 Laatste Weddenschappen</div>
+                <div id="recent-list"></div>
+            </div>
+        </div>
+        
+        <!-- PLACE BET -->
+        <div id="place-bet" class="tab-content">
+            <div class="section">
+                <div class="section-title">📝 Registreer Weddenschap</div>
+                
+                <div class="input-group">
+                    <label>Wedstrijd *</label>
+                    <input type="text" id="bet-match" placeholder="Bijv. Ajax - PSV">
+                </div>
+                
+                <div class="input-group">
+                    <label>Sport *</label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="bet-sport" value="voetbal" checked onchange="toggleSport()">
+                            <span>⚽ Voetbal</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="bet-sport" value="overig" onchange="toggleSport()">
+                            <span>🏆 Overig</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="input-group" id="football-comp">
+                    <label>Competitie *</label>
+                    <select id="bet-football">
+                        <option value="Eredivisie">Eredivisie</option>
+                        <option value="Premier League">Premier League</option>
+                        <option value="La Liga">La Liga</option>
+                        <option value="Bundesliga">Bundesliga</option>
+                        <option value="Serie A">Serie A</option>
+                        <option value="Ligue 1">Ligue 1</option>
+                        <option value="Champions League">Champions League</option>
+                        <option value="Europa League">Europa League</option>
+                        <option value="Conference League">Conference League</option>
+                        <option value="International">Internationaal Voetbal</option>
+                    </select>
+                </div>
+                
+                <div class="input-group" id="other-sport" style="display: none;">
+                    <label>Sport / Categorie *</label>
+                    <input type="text" id="bet-other" placeholder="Bijv. Tennis, Basketbal, Darts...">
+                </div>
+                
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Confidence Level *</label>
+                        <select id="bet-confidence">
+                            <option value="0.5">😐 Twijfelachtig (0.5 units)</option>
+                            <option value="1" selected>🎯 Normaal (1 unit)</option>
+                            <option value="2">😊 Goed gevoel (2 units)</option>
+                            <option value="3">🔥 Zeer zeker (3 units)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Odds *</label>
+                        <input type="number" id="bet-odds" value="2.00" step="0.01" min="1.01">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>
+                        <input type="checkbox" id="is-combo" style="width: auto; margin-right: 8px;">
+                        Dit is een combi-bet (parlay/accumulator)
+                    </label>
+                </div>
+                
+                <div class="input-group" id="combo-info" style="display: none;">
+                    <label>Aantal selecties in combi</label>
+                    <input type="number" id="combo-count" min="2" value="2">
+                </div>
+                
+                <div class="input-group">
+                    <label>Notitie (optioneel)</label>
+                    <textarea id="bet-note" placeholder="Extra opmerkingen..."></textarea>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-success" onclick="placeBet('win')">✓ Gewonnen</button>
+                    <button class="btn btn-danger" onclick="placeBet('loss')">✗ Verloren</button>
+                    <button class="btn btn-secondary" onclick="placeBet('void')">⊘ Ongeldig</button>
+                    <button class="btn btn-primary" onclick="placeBet('pending')">📌 Plaatsen</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- HISTORY -->
+        <div id="history" class="tab-content">
+            <div class="section">
+                <div class="section-title">📜 Geschiedenis (<span id="history-count">0</span>)</div>
+                <div id="history-list"></div>
+            </div>
+        </div>
+        
+        <!-- STATISTICS -->
+        <div id="stats" class="tab-content">
+            <!-- Overall Performance -->
+            <div class="section">
+                <div class="section-title">📊 Overall Performance</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Win Rate</div>
+                        <div class="stat-value" id="stats-winrate">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Totale ROI</div>
+                        <div class="stat-value" id="stats-roi">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Gem. Odds</div>
+                        <div class="stat-value" id="stats-avg-odds">0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Totaal Ingezet</div>
+                        <div class="stat-value" id="stats-staked">€0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Streaks -->
+            <div class="section">
+                <div class="section-title">🔥 Streaks & Patronen</div>
+                <div class="grid-2" style="gap: 15px;">
+                    <div style="background: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div class="text-muted" style="font-size: 14px;">Longest Win Streak</div>
+                        <div class="text-success" style="font-size: 32px; font-weight: bold; margin-top: 5px;" id="stats-win-streak">0</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div class="text-muted" style="font-size: 14px;">Longest Loss Streak</div>
+                        <div class="text-danger" style="font-size: 32px; font-weight: bold; margin-top: 5px;" id="stats-loss-streak">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Confidence Analysis -->
+            <div class="section">
+                <div class="section-title">🎯 Confidence Level Analyse</div>
+                <div id="confidence-analysis"></div>
+            </div>
+            
+            <!-- Competition Performance -->
+            <div class="section">
+                <div class="section-title">🏆 Prestaties per Competitie</div>
+                <div id="competition-performance"></div>
+            </div>
+            
+            <!-- Bankroll Chart -->
+            <div class="section">
+                <div class="section-title">📈 Bankroll Ontwikkeling</div>
+                <canvas id="bankroll-chart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>
+        
+        <!-- GOALS -->
+        <div id="goals" class="tab-content">
+            <!-- Target Bankroll -->
+            <div class="section">
+                <div class="section-title">🎯 Target Bankroll</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Stel Target Bankroll in</label>
+                            <input type="number" id="target-input" step="50" min="0" placeholder="Bijv. 300">
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button class="btn btn-primary" onclick="setTarget()" style="width: 100%;">Stel Target in</button>
+                        </div>
+                    </div>
+                    <div id="target-info" style="margin-top: 20px; display: none;">
+                        <div style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                            <div style="height: 30px; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); border-radius: 15px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;" id="target-progress-bar">0%</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Huidige: €<span id="goals-current">200</span></span>
+                            <span>Target: €<span id="goals-target">300</span></span>
+                            <span>Nog: €<span id="goals-remaining">100</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Withdrawal Management -->
+            <div class="section">
+                <div class="section-title">💰 Opname Management</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="stats-grid" style="margin-bottom: 20px;">
+                        <div class="stat-card blue">
+                            <div class="stat-label">Totaal Opgenomen</div>
+                            <div class="stat-value" id="total-withdrawn">€0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Aantal Opnames</div>
+                            <div class="stat-value" id="withdrawal-count">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Net Profit</div>
+                            <div class="stat-value" id="net-profit">+€0</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="doWithdrawal()" style="width: 100%;">💸 Opname Doen</button>
+                    <div id="withdrawal-history" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+            
+            <!-- Break-even Calculator -->
+            <div class="section">
+                <div class="section-title">⚖️ Break-even Calculator</div>
+                <div id="breakeven-calc" style="background: white; padding: 20px; border-radius: 10px;"></div>
+            </div>
+            
+            <!-- Milestones -->
+            <div class="section">
+                <div class="section-title">🏁 Milestones</div>
+                <div id="milestones-list"></div>
+            </div>
+        </div>
+        
+        <!-- SETTINGS -->
+        <div id="settings" class="tab-content">
+            <!-- Firebase Configuration -->
+            <div class="section">
+                <div class="section-title">🔥 Firebase Configuratie (Cloud Sync)</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="alert alert-info" style="margin-bottom: 15px;">
+                        <strong>💡 Cloud Sync:</strong> Synchroniseer je data automatisch tussen al je apparaten via Firebase.
+                        <br><small>Gratis voor normaal gebruik. <a href="https://console.firebase.google.com" target="_blank" style="color: #667eea;">Maak een Firebase project aan →</a></small>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>Status: <span id="firebase-status">❌ Niet geconfigureerd</span></strong>
+                                <br><small class="text-muted">Laatst gesynchroniseerd: <span id="last-sync">Nooit</span></small>
+                            </div>
+                            <button class="btn btn-primary" onclick="testFirebaseConnection()" id="test-firebase-btn" disabled>Test Verbinding</button>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>API Key</label>
+                        <input type="text" id="firebase-apiKey" placeholder="AIzaSy...">
+                    </div>
+                    <div class="input-group">
+                        <label>Auth Domain</label>
+                        <input type="text" id="firebase-authDomain" placeholder="your-app.firebaseapp.com">
+                    </div>
+                    <div class="input-group">
+                        <label>Project ID</label>
+                        <input type="text" id="firebase-projectId" placeholder="your-app">
+                    </div>
+                    <div class="input-group">
+                        <label>Storage Bucket</label>
+                        <input type="text" id="firebase-storageBucket" placeholder="your-app.appspot.com">
+                    </div>
+                    <div class="input-group">
+                        <label>Messaging Sender ID</label>
+                        <input type="text" id="firebase-messagingSenderId" placeholder="123456789">
+                    </div>
+                    <div class="input-group">
+                        <label>App ID</label>
+                        <input type="text" id="firebase-appId" placeholder="1:123456789:web:abc123">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="firebase-auto-sync" style="width: auto; margin-right: 8px;">
+                            Automatische synchronisatie (sync bij elke wijziging)
+                        </label>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="saveFirebaseConfig()">💾 Config Opslaan</button>
+                        <button class="btn btn-success" onclick="manualSync()">🔄 Sync Nu</button>
+                        <button class="btn btn-secondary" onclick="clearFirebaseConfig()">🗑️ Clear Config</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Webhook Configuration -->
+            <div class="section">
+                <div class="section-title">🔗 Webhook Configuratie (n8n / Zapier)</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="alert alert-info" style="margin-bottom: 15px;">
+                        <strong>💡 Webhooks:</strong> Stuur automatisch notificaties naar Telegram, Discord, of andere services via n8n/Zapier.
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Webhook URL</label>
+                        <input type="url" id="webhook-url" placeholder="https://your-n8n-instance.com/webhook/betting-tracker">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label><strong>Trigger Events:</strong></label>
+                        <div style="display: grid; gap: 8px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="webhook-bet-registered" style="width: auto; margin-right: 8px;" checked>
+                                Weddenschap geregistreerd
+                            </label>
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="webhook-target-reached" style="width: auto; margin-right: 8px;" checked>
+                                Target bereikt
+                            </label>
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="webhook-milestone" style="width: auto; margin-right: 8px;" checked>
+                                Milestone bereikt
+                            </label>
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="webhook-big-win" style="width: auto; margin-right: 8px;" checked>
+                                Grote winst (>€50)
+                            </label>
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="webhook-warning" style="width: auto; margin-right: 8px;" checked>
+                                Waarschuwing (25% verlies)
+                            </label>
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="webhook-daily-summary" style="width: auto; margin-right: 8px;">
+                                Dagelijkse samenvatting (20:00)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="saveWebhookConfig()">💾 Webhook Opslaan</button>
+                        <button class="btn btn-secondary" onclick="testWebhook()">🧪 Test Webhook</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Unit System -->
+            <div class="section">
+                <div class="section-title">📊 Unit Systeem</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: #f0f4ff; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 14px; color: #666;">Huidige Sessie</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #333;" id="settings-session-date"></div>
+                                <div style="margin-top: 5px;">
+                                    <strong>Unit Waarde:</strong> €<span id="settings-unit-value">2.00</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="updateSession()">🔄 Update Sessie</button>
+                        </div>
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+                            <small class="text-muted">💡 De unit-waarde wordt vastgezet aan het begin van elke sessie en blijft constant voor alle weddenschappen van die sessie.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Basis Unit Percentage (% van bankroll)</label>
+                        <input type="number" id="unit-pct" value="1" min="0.1" max="5" step="0.1">
+                        <small class="text-muted">Standaard: 1% - Pas dit alleen aan als je weet wat je doet</small>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSettings()">Opslaan</button>
+                </div>
+            </div>
+            
+            <!-- Alert Settings -->
+            <div class="section">
+                <div class="section-title">🔔 Waarschuwingen</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="input-group">
+                        <label>Waarschuwing bij verlies van X% van startbankroll</label>
+                        <input type="number" id="warning-pct" value="25" min="0" max="100" step="5">
+                    </div>
+                    <div class="input-group">
+                        <label>Stop signaal bij verlies van X% van startbankroll</label>
+                        <input type="number" id="stop-pct" value="50" min="0" max="100" step="5">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveAlerts()">Opslaan</button>
+                </div>
+            </div>
+            
+            <!-- Data Management -->
+            <div class="section">
+                <div class="section-title">💾 Data Management</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="exportData()">📥 Exporteer Data (JSON)</button>
+                        <button class="btn btn-secondary" onclick="exportCSV()">📥 Exporteer CSV</button>
+                    </div>
+                    <div class="alert alert-info" style="margin-top: 15px; margin-bottom: 15px;">
+                        <strong>💡 Tip:</strong> Exporteer regelmatig je data als backup!
+                    </div>
+                    <div style="background: #f8d7da; padding: 15px; border-radius: 8px; border: 1px solid #f5c6cb;">
+                        <strong style="color: #721c24;">⚠️ Gevaarlijke Zone</strong><br>
+                        <button class="btn btn-danger" onclick="resetData()" style="margin-top: 10px; width: 100%;">🗑️ Reset Alle Data</button>
+                        <small style="display: block; margin-top: 10px; color: #721c24;">Dit verwijdert permanent alle data. Deze actie kan niet ongedaan gemaakt worden!</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // State
+        let bankroll = 200;
+        const startBankroll = 200;
+        let unitValue = 2.00;
+        let unitPct = 1;
+        let sessionDate = new Date().toLocaleDateString('nl-NL');
+        let history = [];
+        let pending = [];
+        let betId = 0;
+        let targetBankroll = null;
+        let withdrawals = [];
+        let alertSettings = {
+            warning: 25,
+            stop: 50
+        };
+        
+        // Firebase & Sync
+        let firebaseConfig = null;
+        let firebaseApp = null;
+        let db = null;
+        let auth = null;
+        let userId = null;
+        let autoSync = false;
+        let lastSyncTime = null;
+        
+        // Webhooks
+        let webhookConfig = {
+            url: '',
+            events: {
+                betRegistered: true,
+                targetReached: true,
+                milestone: true,
+                bigWin: true,
+                warning: true,
+                dailySummary: false
+            }
+        };
+        
+        // Milestone tracking (to prevent duplicate notifications)
+        let reachedMilestones = [];
+        
+        // Initialize
+        function init() {
+            // Load from LocalStorage first
+            loadFromLocalStorage();
+            
+            // Load Firebase config if exists
+            loadFirebaseConfig();
+            
+            // Load Webhook config
+            loadWebhookConfig();
+            
+            // Update UI
+            document.getElementById('session-date').textContent = sessionDate;
+            document.getElementById('session-unit').textContent = unitValue.toFixed(2);
+            document.getElementById('settings-session-date').textContent = sessionDate;
+            document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
+            document.getElementById('warning-pct').value = alertSettings.warning;
+            document.getElementById('stop-pct').value = alertSettings.stop;
+            updateDashboard();
+            updateMilestones();
+            
+            // Try to sync from Firebase if configured
+            if (firebaseConfig && autoSync) {
+                initFirebase();
+            }
+        }
+        
+        // ============================================
+        // LOCALSTORAGE FUNCTIONS
+        // ============================================
+        
+        function saveToLocalStorage() {
+            const data = {
+                bankroll,
+                unitValue,
+                unitPct,
+                sessionDate,
+                history,
+                pending,
+                betId,
+                targetBankroll,
+                withdrawals,
+                alertSettings,
+                reachedMilestones,
+                lastSaved: new Date().toISOString()
+            };
+            localStorage.setItem('bettingTracker', JSON.stringify(data));
+        }
+        
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('bettingTracker');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    bankroll = data.bankroll || 200;
+                    unitValue = data.unitValue || 2.00;
+                    unitPct = data.unitPct || 1;
+                    sessionDate = data.sessionDate || new Date().toLocaleDateString('nl-NL');
+                    history = data.history || [];
+                    pending = data.pending || [];
+                    betId = data.betId || 0;
+                    targetBankroll = data.targetBankroll || null;
+                    withdrawals = data.withdrawals || [];
+                    alertSettings = data.alertSettings || { warning: 25, stop: 50 };
+                    reachedMilestones = data.reachedMilestones || [];
+                    console.log('✓ Data geladen van LocalStorage');
+                } catch (e) {
+                    console.error('Error loading from LocalStorage:', e);
+                }
+            }
+        }
+        
+        // ============================================
+        // FIREBASE FUNCTIONS
+        // ============================================
+        
+        function saveFirebaseConfig() {
+            const config = {
+                apiKey: document.getElementById('firebase-apiKey').value.trim(),
+                authDomain: document.getElementById('firebase-authDomain').value.trim(),
+                projectId: document.getElementById('firebase-projectId').value.trim(),
+                storageBucket: document.getElementById('firebase-storageBucket').value.trim(),
+                messagingSenderId: document.getElementById('firebase-messagingSenderId').value.trim(),
+                appId: document.getElementById('firebase-appId').value.trim()
+            };
+            
+            if (!config.apiKey || !config.projectId) {
+                alert('Vul minimaal API Key en Project ID in');
+                return;
+            }
+            
+            firebaseConfig = config;
+            autoSync = document.getElementById('firebase-auto-sync').checked;
+            
+            localStorage.setItem('firebaseConfig', JSON.stringify(config));
+            localStorage.setItem('autoSync', autoSync);
+            
+            alert('✓ Firebase configuratie opgeslagen!');
+            
+            // Try to initialize
+            initFirebase();
+        }
+        
+        function loadFirebaseConfig() {
+            const saved = localStorage.getItem('firebaseConfig');
+            if (saved) {
+                try {
+                    firebaseConfig = JSON.parse(saved);
+                    autoSync = localStorage.getItem('autoSync') === 'true';
+                    
+                    // Populate fields
+                    document.getElementById('firebase-apiKey').value = firebaseConfig.apiKey || '';
+                    document.getElementById('firebase-authDomain').value = firebaseConfig.authDomain || '';
+                    document.getElementById('firebase-projectId').value = firebaseConfig.projectId || '';
+                    document.getElementById('firebase-storageBucket').value = firebaseConfig.storageBucket || '';
+                    document.getElementById('firebase-messagingSenderId').value = firebaseConfig.messagingSenderId || '';
+                    document.getElementById('firebase-appId').value = firebaseConfig.appId || '';
+                    document.getElementById('firebase-auto-sync').checked = autoSync;
+                    
+                    document.getElementById('test-firebase-btn').disabled = false;
+                } catch (e) {
+                    console.error('Error loading Firebase config:', e);
+                }
+            }
+        }
+        
+        function clearFirebaseConfig() {
+            if (confirm('Weet je zeker dat je de Firebase configuratie wilt verwijderen?')) {
+                localStorage.removeItem('firebaseConfig');
+                localStorage.removeItem('autoSync');
+                firebaseConfig = null;
+                autoSync = false;
+                
+                document.getElementById('firebase-apiKey').value = '';
+                document.getElementById('firebase-authDomain').value = '';
+                document.getElementById('firebase-projectId').value = '';
+                document.getElementById('firebase-storageBucket').value = '';
+                document.getElementById('firebase-messagingSenderId').value = '';
+                document.getElementById('firebase-appId').value = '';
+                document.getElementById('firebase-auto-sync').checked = false;
+                document.getElementById('firebase-status').textContent = '❌ Niet geconfigureerd';
+                document.getElementById('test-firebase-btn').disabled = true;
+                
+                alert('✓ Firebase configuratie verwijderd');
+            }
+        }
+        
+        async function initFirebase() {
+            if (!firebaseConfig) {
+                console.log('Geen Firebase config');
+                return;
+            }
+            
+            try {
+                // Initialize Firebase
+                if (!firebaseApp) {
+                    firebaseApp = firebase.initializeApp(firebaseConfig);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                }
+                
+                // Anonymous authentication
+                if (!auth.currentUser) {
+                    await auth.signInAnonymously();
+                }
+                
+                userId = auth.currentUser.uid;
+                document.getElementById('firebase-status').textContent = '✅ Verbonden';
+                console.log('✓ Firebase geïnitialiseerd, User ID:', userId);
+                
+                // Sync data
+                await syncFromFirebase();
+                
+            } catch (error) {
+                console.error('Firebase init error:', error);
+                document.getElementById('firebase-status').textContent = '❌ Fout: ' + error.message;
+                alert('Firebase verbinding mislukt: ' + error.message);
+            }
+        }
+        
+        async function syncToFirebase() {
+            if (!db || !userId) {
+                console.log('Firebase niet geïnitialiseerd');
+                return;
+            }
+            
+            try {
+                const data = {
+                    bankroll,
+                    unitValue,
+                    unitPct,
+                    sessionDate,
+                    history,
+                    pending,
+                    betId,
+                    targetBankroll,
+                    withdrawals,
+                    alertSettings,
+                    reachedMilestones,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                await db.collection('users').doc(userId).set(data);
+                lastSyncTime = new Date().toLocaleString('nl-NL');
+                document.getElementById('last-sync').textContent = lastSyncTime;
+                console.log('✓ Gesynchroniseerd naar Firebase');
+            } catch (error) {
+                console.error('Firebase sync error:', error);
+            }
+        }
+        
+        async function syncFromFirebase() {
+            if (!db || !userId) return;
+            
+            try {
+                const doc = await db.collection('users').doc(userId).get();
+                
+                if (doc.exists) {
+                    const data = doc.data();
+                    
+                    // Merge with local data (use newest)
+                    bankroll = data.bankroll || bankroll;
+                    unitValue = data.unitValue || unitValue;
+                    unitPct = data.unitPct || unitPct;
+                    sessionDate = data.sessionDate || sessionDate;
+                    history = data.history || history;
+                    pending = data.pending || pending;
+                    betId = data.betId || betId;
+                    targetBankroll = data.targetBankroll || targetBankroll;
+                    withdrawals = data.withdrawals || withdrawals;
+                    alertSettings = data.alertSettings || alertSettings;
+                    reachedMilestones = data.reachedMilestones || reachedMilestones;
+                    
+                    // Save to LocalStorage
+                    saveToLocalStorage();
+                    
+                    // Update UI
+                    updateDashboard();
+                    updateMilestones();
+                    
+                    lastSyncTime = new Date().toLocaleString('nl-NL');
+                    document.getElementById('last-sync').textContent = lastSyncTime;
+                    console.log('✓ Data gesynchroniseerd van Firebase');
+                } else {
+                    // No data in Firebase yet, upload current data
+                    await syncToFirebase();
+                }
+            } catch (error) {
+                console.error('Firebase sync from error:', error);
+            }
+        }
+        
+        async function manualSync() {
+            if (!firebaseConfig) {
+                alert('Firebase is niet geconfigureerd. Vul eerst de Firebase instellingen in.');
+                return;
+            }
+            
+            if (!firebaseApp) {
+                await initFirebase();
+            }
+            
+            await syncToFirebase();
+            alert('✓ Handmatige synchronisatie voltooid!');
+        }
+        
+        async function testFirebaseConnection() {
+            if (!firebaseConfig) {
+                alert('Vul eerst de Firebase configuratie in');
+                return;
+            }
+            
+            try {
+                await initFirebase();
+                alert('✅ Firebase verbinding succesvol!\n\nUser ID: ' + userId);
+            } catch (error) {
+                alert('❌ Firebase verbinding mislukt:\n\n' + error.message);
+            }
+        }
+        
+        // ============================================
+        // WEBHOOK FUNCTIONS
+        // ============================================
+        
+        function saveWebhookConfig() {
+            webhookConfig.url = document.getElementById('webhook-url').value.trim();
+            webhookConfig.events = {
+                betRegistered: document.getElementById('webhook-bet-registered').checked,
+                targetReached: document.getElementById('webhook-target-reached').checked,
+                milestone: document.getElementById('webhook-milestone').checked,
+                bigWin: document.getElementById('webhook-big-win').checked,
+                warning: document.getElementById('webhook-warning').checked,
+                dailySummary: document.getElementById('webhook-daily-summary').checked
+            };
+            
+            localStorage.setItem('webhookConfig', JSON.stringify(webhookConfig));
+            alert('✓ Webhook configuratie opgeslagen!');
+        }
+        
+        function loadWebhookConfig() {
+            const saved = localStorage.getItem('webhookConfig');
+            if (saved) {
+                try {
+                    webhookConfig = JSON.parse(saved);
+                    document.getElementById('webhook-url').value = webhookConfig.url || '';
+                    document.getElementById('webhook-bet-registered').checked = webhookConfig.events.betRegistered;
+                    document.getElementById('webhook-target-reached').checked = webhookConfig.events.targetReached;
+                    document.getElementById('webhook-milestone').checked = webhookConfig.events.milestone;
+                    document.getElementById('webhook-big-win').checked = webhookConfig.events.bigWin;
+                    document.getElementById('webhook-warning').checked = webhookConfig.events.warning;
+                    document.getElementById('webhook-daily-summary').checked = webhookConfig.events.dailySummary;
+                } catch (e) {
+                    console.error('Error loading webhook config:', e);
+                }
+            }
+        }
+        
+        async function sendWebhook(event, data) {
+            if (!webhookConfig.url || !webhookConfig.events[event]) {
+                return;
+            }
+            
+            const payload = {
+                event: event,
+                timestamp: new Date().toISOString(),
+                data: data
+            };
+            
+            try {
+                await fetch(webhookConfig.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                console.log('✓ Webhook sent:', event);
+            } catch (error) {
+                console.error('Webhook error:', error);
+            }
+        }
+        
+        async function testWebhook() {
+            if (!webhookConfig.url) {
+                alert('Vul eerst een Webhook URL in');
+                return;
+            }
+            
+            const testPayload = {
+                event: 'test',
+                timestamp: new Date().toISOString(),
+                data: {
+                    message: 'Test webhook van Betting Tracker Pro',
+                    bankroll: bankroll,
+                    totalBets: history.length
+                }
+            };
+            
+            try {
+                const response = await fetch(webhookConfig.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testPayload)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Test webhook succesvol verzonden!\n\nStatus: ' + response.status);
+                } else {
+                    alert('⚠️ Webhook verzonden maar server antwoordde met status: ' + response.status);
+                }
+            } catch (error) {
+                alert('❌ Webhook fout:\n\n' + error.message);
+            }
+        }
+        
+        // ============================================
+        // AUTO-SAVE WRAPPER
+        // ============================================
+        
+        async function saveAll() {
+            saveToLocalStorage();
+            if (autoSync && db && userId) {
+                await syncToFirebase();
+            }
+        }
+        
+        // Initialize
+        function init() {
+            document.getElementById('session-date').textContent = sessionDate;
+            document.getElementById('session-unit').textContent = unitValue.toFixed(2);
+            document.getElementById('settings-session-date').textContent = sessionDate;
+            document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
+            document.getElementById('warning-pct').value = alertSettings.warning;
+            document.getElementById('stop-pct').value = alertSettings.stop;
+            updateDashboard();
+            updateMilestones();
+        }
+        
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tab === 'history') updateHistory();
+            if (tab === 'stats') updateStats();
+            if (tab === 'goals') updateGoals();
+            saveAll();
+            if (tab === 'settings') {
+                document.getElementById('settings-session-date').textContent = sessionDate;
+                document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
+            }
+        }
+        
+        // Toggle sport selection
+        function toggleSport() {
+            const isFootball = document.querySelector('input[name="bet-sport"]:checked').value === 'voetbal';
+            document.getElementById('football-comp').style.display = isFootball ? 'block' : 'none';
+            document.getElementById('other-sport').style.display = isFootball ? 'none' : 'block';
+        }
+        
+        // Toggle combo bet
+        document.getElementById('is-combo').addEventListener('change', function() {
+            document.getElementById('combo-info').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Update session
+        function updateSession() {
+            if (confirm('Nieuwe sessie starten? Dit herberekent de unit op basis van je huidige bankroll (€' + bankroll.toFixed(2) + ')')) {
+                sessionDate = new Date().toLocaleDateString('nl-NL');
+                unitValue = bankroll * (unitPct / 100);
+                document.getElementById('session-date').textContent = sessionDate;
+                document.getElementById('session-unit').textContent = unitValue.toFixed(2);
+                document.getElementById('settings-session-date').textContent = sessionDate;
+                document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
+                saveAll();
+                alert('✓ Nieuwe sessie gestart! Unit waarde: €' + unitValue.toFixed(2));
+            }
+        }
+        
+        // Quick bet
+        function quickBet(result) {
+            const match = document.getElementById('quick-match').value.trim();
+            if (!match) {
+                alert('Vul een wedstrijd in');
+                return;
+            }
+            
+            const comp = document.getElementById('quick-competition').value;
+            const conf = parseFloat(document.getElementById('quick-confidence').value);
+            const odds = parseFloat(document.getElementById('quick-odds').value);
+            
+            registerBet({
+                match: match,
+                sport: 'Voetbal',
+                competition: comp,
+                confidence: conf,
+                odds: odds,
+                note: '',
+                isCombo: false,
+                comboCount: 0,
+                result: result
+            });
+            
+            if (result !== 'pending') {
+                document.getElementById('quick-match').value = '';
+            }
+        }
+        
+        // Place bet
+        function placeBet(result) {
+            const match = document.getElementById('bet-match').value.trim();
+            if (!match) {
+                alert('Vul een wedstrijd in');
+                return;
+            }
+            
+            const sportType = document.querySelector('input[name="bet-sport"]:checked').value;
+            let sport, comp;
+            
+            if (sportType === 'voetbal') {
+                sport = 'Voetbal';
+                comp = document.getElementById('bet-football').value;
+            } else {
+                const other = document.getElementById('bet-other').value.trim();
+                if (!other) {
+                    alert('Vul een sport/categorie in');
+                    return;
+                }
+                sport = other;
+                comp = other;
+            }
+            
+            const conf = parseFloat(document.getElementById('bet-confidence').value);
+            const odds = parseFloat(document.getElementById('bet-odds').value);
+            const note = document.getElementById('bet-note').value.trim();
+            const isCombo = document.getElementById('is-combo').checked;
+            const comboCount = isCombo ? parseInt(document.getElementById('combo-count').value) : 0;
+            
+            registerBet({
+                match: match,
+                sport: sport,
+                competition: comp,
+                confidence: conf,
+                odds: odds,
+                note: note,
+                isCombo: isCombo,
+                comboCount: comboCount,
+                result: result
+            });
+            
+            if (result !== 'pending') {
+                document.getElementById('bet-match').value = '';
+                document.getElementById('bet-note').value = '';
+            }
+            
+            switchTab('dashboard');
+            document.querySelector('.tab-button').click();
+        }
+        
+        // Register bet
+        function registerBet(data) {
+            betId++;
+            const stake = unitValue * data.confidence;
+            
+            const confLabels = {
+                0.5: 'Twijfelachtig',
+                1: 'Normaal',
+                2: 'Goed gevoel',
+                3: 'Zeer zeker'
+            };
+            
+            const bet = {
+                id: betId,
+                match: data.match,
+                sport: data.sport,
+                competition: data.competition,
+                confidence: confLabels[data.confidence],
+                units: data.confidence,
+                stake: stake,
+                odds: data.odds,
+                note: data.note,
+                isCombo: data.isCombo,
+                comboCount: data.comboCount,
+                result: data.result,
+                unitValue: unitValue,
+                date: new Date().toLocaleDateString('nl-NL'),
+                time: new Date().toLocaleTimeString('nl-NL')
+            };
+            
+            if (data.result === 'pending') {
+                pending.push(bet);
+            } else {
+                let profit = 0;
+                if (data.result === 'win') {
+                    profit = stake * (data.odds - 1);
+                    bankroll += profit;
+                    
+                    // Check big win
+                    if (profit >= 50) {
+                        sendWebhook('bigWin', { profit, bet });
+                    }
+                } else if (data.result === 'loss') {
+                    profit = -stake;
+                    bankroll += profit;
+                } else if (data.result === 'void') {
+                    profit = 0;
+                }
+                
+                bet.profit = profit;
+                bet.bankroll = bankroll;
+                history.unshift(bet);
+                
+                // Check warnings
+                const lossPercentage = ((startBankroll - bankroll) / startBankroll) * 100;
+                if (lossPercentage >= alertSettings.warning && lossPercentage < alertSettings.stop) {
+                    sendWebhook('warning', { lossPercentage, bankroll });
+                }
+                
+                // Check target reached
+                if (targetBankroll && bankroll >= targetBankroll) {
+                    sendWebhook('targetReached', { targetBankroll, bankroll });
+                }
+                
+                // Check milestones
+                checkMilestones();
+            }
+            
+            // Webhook for bet registered
+            sendWebhook('betRegistered', bet);
+            
+            updateDashboard();
+            updateMilestones();
+            saveAll();
+        }
+        
+        function checkMilestones() {
+            const milestones = [250, 300, 400, 500, 1000];
+            for (let milestone of milestones) {
+                if (bankroll >= milestone && !reachedMilestones.includes(milestone)) {
+                    reachedMilestones.push(milestone);
+                    sendWebhook('milestone', { milestone, bankroll });
+                }
+            }
+        }
+        
+        // Resolve pending
+        function resolvePending(id, result) {
+            const index = pending.findIndex(b => b.id === id);
+            if (index === -1) return;
+            
+            const bet = pending[index];
+            pending.splice(index, 1);
+            
+            let profit = 0;
+            if (result === 'win') {
+                profit = bet.stake * (bet.odds - 1);
+                bankroll += profit;
+                
+                if (profit >= 50) {
+                    sendWebhook('bigWin', { profit, bet });
+                }
+            } else if (result === 'loss') {
+                profit = -bet.stake;
+                bankroll += profit;
+            } else if (result === 'void') {
+                profit = 0;
+            }
+            
+            bet.result = result;
+            bet.profit = profit;
+            bet.bankroll = bankroll;
+            bet.time = new Date().toLocaleTimeString('nl-NL');
+            
+            history.unshift(bet);
+            
+            // Check warnings & targets
+            const lossPercentage = ((startBankroll - bankroll) / startBankroll) * 100;
+            if (lossPercentage >= alertSettings.warning && lossPercentage < alertSettings.stop) {
+                sendWebhook('warning', { lossPercentage, bankroll });
+            }
+            
+            if (targetBankroll && bankroll >= targetBankroll) {
+                sendWebhook('targetReached', { targetBankroll, bankroll });
+            }
+            
+            checkMilestones();
+            
+            updateDashboard();
+            updateMilestones();
+            saveAll();
+        }
+        
+        // Update dashboard
+        function updateDashboard() {
+            // Bankroll
+            document.getElementById('bankroll-display').textContent = '€' + bankroll.toFixed(2);
+            
+            // Total profit
+            const totalProfit = bankroll - startBankroll;
+            document.getElementById('profit-display').textContent = (totalProfit >= 0 ? '+' : '') + '€' + totalProfit.toFixed(2);
+            
+            const profitCard = document.getElementById('profit-card');
+            if (totalProfit > 0) {
+                profitCard.classList.remove('danger');
+            } else if (totalProfit < 0) {
+                profitCard.classList.add('danger');
+            }
+            
+            // Win rate
+            const completed = history.filter(b => b.result !== 'void');
+            if (completed.length > 0) {
+                const wins = completed.filter(b => b.result === 'win').length;
+                const winRate = ((wins / completed.length) * 100).toFixed(1);
+                document.getElementById('winrate-display').textContent = winRate + '%';
+            } else {
+                document.getElementById('winrate-display').textContent = '0%';
+            }
+            
+            // Streak
+            if (completed.length > 0) {
+                let streak = 1;
+                const lastResult = completed[0].result;
+                for (let i = 1; i < completed.length; i++) {
+                    if (completed[i].result === lastResult) streak++;
+                    else break;
+                }
+                document.getElementById('streak-display').textContent = (lastResult === 'win' ? '🟢 ' : '🔴 ') + streak;
+            } else {
+                document.getElementById('streak-display').textContent = '-';
+            }
+            
+            // Today
+            const today = new Date().toLocaleDateString('nl-NL');
+            const todayBets = history.filter(b => b.date === today && b.result !== 'void');
+            const todayProfit = todayBets.reduce((sum, b) => sum + (b.profit || 0), 0);
+            document.getElementById('today-profit').textContent = (todayProfit >= 0 ? '+' : '') + '€' + todayProfit.toFixed(2);
+            document.getElementById('today-bets').textContent = todayBets.length;
+            
+            // Week
+            const weekBets = getWeekBets().filter(b => b.result !== 'void');
+            const weekProfit = weekBets.reduce((sum, b) => sum + (b.profit || 0), 0);
+            document.getElementById('week-profit').textContent = (weekProfit >= 0 ? '+' : '') + '€' + weekProfit.toFixed(2);
+            document.getElementById('week-bets').textContent = weekBets.length;
+            
+            // Open bets
+            updateOpenBets();
+            
+            // Recent bets
+            updateRecentBets();
+        }
+        
+        function getWeekBets() {
+            const now = new Date();
+            const day = now.getDay();
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+            monday.setHours(0, 0, 0, 0);
+            
+            return history.filter(bet => {
+                const parts = bet.date.split('-');
+                const betDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                return betDate >= monday;
+            });
+        }
+        
+        function updateOpenBets() {
+            if (pending.length === 0) {
+                document.getElementById('open-section').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('open-section').style.display = 'block';
+            const html = pending.map(bet => `
+                <div class="history-item pending">
+                    <div>
+                        <strong>${bet.match}</strong>
+                        <span class="tag">${bet.competition}</span>
+                        ${bet.isCombo ? '<span class="tag combo">Combi ' + bet.comboCount + 'x</span>' : ''}
+                        <br>
+                        <small class="text-muted">${bet.confidence} (${bet.units}u) • Odds: ${bet.odds}</small>
+                    </div>
+                    <div class="text-right">
+                        <div><strong>€${bet.stake.toFixed(2)}</strong></div>
+                        <div style="margin-top: 10px;">
+                            <button class="btn btn-success" onclick="resolvePending(${bet.id}, 'win')" style="padding: 5px 10px; font-size: 12px;">✓</button>
+                            <button class="btn btn-danger" onclick="resolvePending(${bet.id}, 'loss')" style="padding: 5px 10px; font-size: 12px;">✗</button>
+                            <button class="btn btn-secondary" onclick="resolvePending(${bet.id}, 'void')" style="padding: 5px 10px; font-size: 12px;">⊘</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('open-list').innerHTML = html;
+        }
+        
+        function updateRecentBets() {
+            const recent = history.slice(0, 5);
+            if (recent.length === 0) {
+                document.getElementById('recent-list').innerHTML = '<p class="text-muted">Nog geen weddenschappen</p>';
+                return;
+            }
+            
+            const html = recent.map(bet => `
+                <div class="history-item ${bet.result}">
+                    <div>
+                        <strong>${bet.match}</strong>
+                        <span class="tag">${bet.competition}</span>
+                        ${bet.isCombo ? '<span class="tag combo">Combi ' + bet.comboCount + 'x</span>' : ''}
+                        ${bet.result === 'void' ? '<span class="tag void">Ongeldig</span>' : ''}
+                        <br>
+                        <small class="text-muted">${bet.confidence} (${bet.units}u) • ${bet.date} ${bet.time}</small>
+                    </div>
+                    <div class="text-right">
+                        <div><strong>€${bet.stake.toFixed(2)}</strong> @ ${bet.odds}</div>
+                        <div class="${bet.result === 'void' ? 'text-muted' : bet.profit >= 0 ? 'text-success' : 'text-danger'}" style="font-weight: bold; font-size: 18px;">
+                            ${bet.result === 'void' ? 'Teruggestort' : (bet.profit >= 0 ? '+' : '') + '€' + bet.profit.toFixed(2)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('recent-list').innerHTML = html;
+        }
+        
+        function updateHistory() {
+            document.getElementById('history-count').textContent = history.length;
+            
+            if (history.length === 0) {
+                document.getElementById('history-list').innerHTML = '<p class="text-muted">Nog geen weddenschappen</p>';
+                return;
+            }
+            
+            const html = history.map(bet => `
+                <div class="history-item ${bet.result}">
+                    <div>
+                        <strong>#${bet.id} - ${bet.match}</strong>
+                        <span class="tag">${bet.competition}</span>
+                        ${bet.isCombo ? '<span class="tag combo">Combi ' + bet.comboCount + 'x</span>' : ''}
+                        ${bet.result === 'void' ? '<span class="tag void">Ongeldig</span>' : ''}
+                        <br>
+                        <small class="text-muted">${bet.confidence} (${bet.units}u) • ${bet.date} ${bet.time}</small>
+                        ${bet.note ? '<br><small class="text-muted">📝 ' + bet.note + '</small>' : ''}
+                    </div>
+                    <div class="text-right">
+                        <div><strong>€${bet.stake.toFixed(2)}</strong> @ ${bet.odds}</div>
+                        <div class="${bet.result === 'void' ? 'text-muted' : bet.profit >= 0 ? 'text-success' : 'text-danger'}" style="font-weight: bold; font-size: 18px;">
+                            ${bet.result === 'void' ? 'Teruggestort' : (bet.profit >= 0 ? '+' : '') + '€' + bet.profit.toFixed(2)}
+                        </div>
+                        <small class="text-muted">Bankroll: €${bet.bankroll.toFixed(2)}</small>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('history-list').innerHTML = html;
+        }
+        
+        function saveSettings() {
+            unitPct = parseFloat(document.getElementById('unit-pct').value);
+            unitValue = bankroll * (unitPct / 100);
+            document.getElementById('session-unit').textContent = unitValue.toFixed(2);
+            document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
+            saveAll();
+            alert('✓ Unit percentage opgeslagen! Nieuwe unit waarde: €' + unitValue.toFixed(2));
+        }
+        
+        function resetData() {
+            if (confirm('⚠️ Weet je zeker dat je alle data wilt verwijderen?')) {
+                if (confirm('Dit is je laatste kans! Alles wordt permanent verwijderd.')) {
+                    bankroll = 200;
+                    history = [];
+                    pending = [];
+                    betId = 0;
+                    unitValue = 2.00;
+                    sessionDate = new Date().toLocaleDateString('nl-NL');
+                    targetBankroll = null;
+                    withdrawals = [];
+                    document.getElementById('session-date').textContent = sessionDate;
+                    document.getElementById('session-unit').textContent = unitValue.toFixed(2);
+                    document.getElementById('settings-session-date').textContent = sessionDate;
+                    document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
+                    updateDashboard();
+                    alert('✓ Alle data gereset!');
+                }
+            }
+        }
+        
+        // Statistics Functions
+        function updateStats() {
+            if (history.length === 0) {
+                document.getElementById('stats-winrate').textContent = '0%';
+                document.getElementById('stats-roi').textContent = '0%';
+                document.getElementById('stats-avg-odds').textContent = '0.00';
+                document.getElementById('stats-staked').textContent = '€0';
+                return;
+            }
+            
+            const completed = history.filter(b => b.result !== 'void');
+            
+            // Win rate
+            if (completed.length > 0) {
+                const wins = completed.filter(b => b.result === 'win').length;
+                const winRate = ((wins / completed.length) * 100).toFixed(1);
+                document.getElementById('stats-winrate').textContent = winRate + '%';
+            }
+            
+            // ROI
+            const totalStaked = history.reduce((sum, b) => sum + b.stake, 0);
+            const totalProfit = bankroll - startBankroll;
+            const roi = totalStaked > 0 ? ((totalProfit / totalStaked) * 100).toFixed(1) : '0.0';
+            document.getElementById('stats-roi').textContent = roi + '%';
+            
+            // Avg odds
+            const avgOdds = (history.reduce((sum, b) => sum + b.odds, 0) / history.length).toFixed(2);
+            document.getElementById('stats-avg-odds').textContent = avgOdds;
+            
+            // Total staked
+            document.getElementById('stats-staked').textContent = '€' + totalStaked.toFixed(2);
+            
+            // Streaks
+            updateStreaks();
+            
+            // Confidence analysis
+            updateConfidenceAnalysis();
+            
+            // Competition performance
+            updateCompetitionPerformance();
+            
+            // Chart
+            updateBankrollChart();
+        }
+        
+        function updateStreaks() {
+            const completed = history.filter(b => b.result !== 'void');
+            if (completed.length === 0) return;
+            
+            let longestWin = 0;
+            let longestLoss = 0;
+            let tempWin = 0;
+            let tempLoss = 0;
+            
+            const chronological = [...completed].reverse();
+            for (let bet of chronological) {
+                if (bet.result === 'win') {
+                    tempWin++;
+                    tempLoss = 0;
+                    longestWin = Math.max(longestWin, tempWin);
+                } else {
+                    tempLoss++;
+                    tempWin = 0;
+                    longestLoss = Math.max(longestLoss, tempLoss);
+                }
+            }
+            
+            document.getElementById('stats-win-streak').textContent = longestWin;
+            document.getElementById('stats-loss-streak').textContent = longestLoss;
+        }
+        
+        function updateConfidenceAnalysis() {
+            const levels = [0.5, 1, 2, 3];
+            const labels = { 0.5: 'Twijfelachtig', 1: 'Normaal', 2: 'Goed gevoel', 3: 'Zeer zeker' };
+            
+            let html = '<div style="display: grid; gap: 10px;">';
+            
+            for (let level of levels) {
+                const bets = history.filter(b => b.units === level && b.result !== 'void');
+                if (bets.length === 0) continue;
+                
+                const wins = bets.filter(b => b.result === 'win').length;
+                const winRate = ((wins / bets.length) * 100).toFixed(1);
+                const totalStaked = bets.reduce((sum, b) => sum + b.stake, 0);
+                const totalProfit = bets.reduce((sum, b) => sum + (b.profit || 0), 0);
+                const roi = ((totalProfit / totalStaked) * 100).toFixed(1);
+                
+                html += `
+                    <div style="background: white; padding: 15px; border-radius: 10px; display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 15px; align-items: center;">
+                        <div><strong>${labels[level]}</strong> (${level}u)<br><small class="text-muted">${bets.length} bets</small></div>
+                        <div style="text-align: center;"><small class="text-muted">Win Rate</small><br><strong>${winRate}%</strong></div>
+                        <div style="text-align: center;"><small class="text-muted">ROI</small><br><strong class="${roi >= 0 ? 'text-success' : 'text-danger'}">${roi}%</strong></div>
+                        <div style="text-align: center;"><small class="text-muted">Ingezet</small><br><strong>€${totalStaked.toFixed(0)}</strong></div>
+                        <div style="text-align: center;"><small class="text-muted">Winst</small><br><strong class="${totalProfit >= 0 ? 'text-success' : 'text-danger'}">${totalProfit >= 0 ? '+' : ''}€${totalProfit.toFixed(0)}</strong></div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            document.getElementById('confidence-analysis').innerHTML = html || '<p class="text-muted">Nog geen data</p>';
+        }
+        
+        function updateCompetitionPerformance() {
+            const competitions = {};
+            for (let bet of history.filter(b => b.result !== 'void')) {
+                if (!competitions[bet.competition]) competitions[bet.competition] = [];
+                competitions[bet.competition].push(bet);
+            }
+            
+            let html = '<div style="display: grid; gap: 10px;">';
+            const sorted = Object.entries(competitions).sort((a, b) => b[1].length - a[1].length);
+            
+            for (let [comp, bets] of sorted) {
+                const wins = bets.filter(b => b.result === 'win').length;
+                const winRate = ((wins / bets.length) * 100).toFixed(1);
+                const totalStaked = bets.reduce((sum, b) => sum + b.stake, 0);
+                const totalProfit = bets.reduce((sum, b) => sum + (b.profit || 0), 0);
+                const roi = ((totalProfit / totalStaked) * 100).toFixed(1);
+                
+                html += `
+                    <div style="background: white; padding: 15px; border-radius: 10px; display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 15px; align-items: center;">
+                        <div><strong>${comp}</strong><br><small class="text-muted">${bets.length} bets</small></div>
+                        <div style="text-align: center;"><small class="text-muted">Win Rate</small><br><strong>${winRate}%</strong></div>
+                        <div style="text-align: center;"><small class="text-muted">ROI</small><br><strong class="${roi >= 0 ? 'text-success' : 'text-danger'}">${roi}%</strong></div>
+                        <div style="text-align: center;"><small class="text-muted">Ingezet</small><br><strong>€${totalStaked.toFixed(0)}</strong></div>
+                        <div style="text-align: center;"><small class="text-muted">Winst</small><br><strong class="${totalProfit >= 0 ? 'text-success' : 'text-danger'}">${totalProfit >= 0 ? '+' : ''}€${totalProfit.toFixed(0)}</strong></div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            document.getElementById('competition-performance').innerHTML = html || '<p class="text-muted">Nog geen data</p>';
+        }
+        
+        function updateBankrollChart() {
+            const ctx = document.getElementById('bankroll-chart');
+            const chronological = [...history].reverse();
+            const labels = ['Start'];
+            const data = [startBankroll];
+            
+            for (let bet of chronological) {
+                labels.push('#' + bet.id);
+                data.push(bet.bankroll);
+            }
+            
+            if (window.chartInstance) {
+                window.chartInstance.destroy();
+            }
+            
+            window.chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Bankroll',
+                        data: data,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => '€' + context.parsed.y.toFixed(2)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: { callback: (value) => '€' + value }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Goals Functions
+        function setTarget() {
+            const target = parseFloat(document.getElementById('target-input').value);
+            if (!target || target <= bankroll) {
+                alert('Target moet hoger zijn dan je huidige bankroll');
+                return;
+            }
+            targetBankroll = target;
+            updateGoals();
+            saveAll();
+            alert('✓ Target ingesteld op €' + target);
+        }
+        
+        function updateGoals() {
+            if (targetBankroll) {
+                document.getElementById('target-info').style.display = 'block';
+                document.getElementById('target-input').value = targetBankroll;
+                document.getElementById('goals-current').textContent = bankroll.toFixed(2);
+                document.getElementById('goals-target').textContent = targetBankroll.toFixed(2);
+                const remaining = Math.max(0, targetBankroll - bankroll);
+                document.getElementById('goals-remaining').textContent = remaining.toFixed(2);
+                
+                const progress = Math.min(100, (bankroll / targetBankroll) * 100);
+                const bar = document.getElementById('target-progress-bar');
+                bar.style.width = progress + '%';
+                bar.textContent = progress.toFixed(0) + '%';
+            }
+            
+            // Withdrawals
+            const totalWith = withdrawals.reduce((sum, w) => sum + w.amount, 0);
+            document.getElementById('total-withdrawn').textContent = '€' + totalWith.toFixed(2);
+            document.getElementById('withdrawal-count').textContent = withdrawals.length;
+            
+            // Net Profit (current bankroll - start + total withdrawn)
+            const netProfit = (bankroll - startBankroll) + totalWith;
+            const netProfitEl = document.getElementById('net-profit');
+            netProfitEl.textContent = (netProfit >= 0 ? '+' : '') + '€' + netProfit.toFixed(2);
+            netProfitEl.style.color = netProfit >= 0 ? '#00f2fe' : '#f5576c';
+            
+            if (withdrawals.length > 0) {
+                document.getElementById('withdrawal-history').innerHTML = 
+                    '<h4 style="margin-top: 20px; margin-bottom: 10px;">Opname Geschiedenis</h4>' +
+                    '<div style="display: grid; gap: 10px;">' + withdrawals.map(w => `
+                        <div style="background: white; padding: 15px; border-radius: 10px; border-left: 4px solid #4facfe;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <div>
+                                    <strong>€${w.amount.toFixed(2)}</strong>
+                                    ${w.note ? '<br><small class="text-muted">' + w.note + '</small>' : ''}
+                                </div>
+                                <div><small class="text-muted">${w.date}</small></div>
+                            </div>
+                        </div>
+                    `).join('') + '</div>';
+            }
+            
+            // Break-even
+            updateBreakEven();
+            
+            // Milestones
+            updateMilestones();
+        }
+        
+        function updateMilestones() {
+            const milestones = [
+                { amount: 250, label: '€250 bereikt', icon: '🥉' },
+                { amount: 300, label: '€300 bereikt', icon: '🥈' },
+                { amount: 400, label: '€400 bereikt', icon: '🥇' },
+                { amount: 500, label: '€500 bereikt', icon: '💎' },
+                { amount: 1000, label: '€1000 bereikt', icon: '👑' }
+            ];
+            
+            let html = '<div style="display: grid; gap: 15px;">';
+            for (let milestone of milestones) {
+                const achieved = bankroll >= milestone.amount;
+                const progress = Math.min(100, (bankroll / milestone.amount) * 100);
+                
+                html += `
+                    <div style="background: white; padding: 15px; border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <span style="font-size: 24px;">${milestone.icon}</span>
+                                <strong style="margin-left: 10px; font-size: 16px;">${milestone.label}</strong>
+                            </div>
+                            <div style="font-size: 14px; font-weight: bold; color: ${achieved ? '#00f2fe' : '#666'};">
+                                ${progress.toFixed(0)}%
+                            </div>
+                        </div>
+                        <div style="background: #f0f0f0; padding: 2px; border-radius: 10px; overflow: hidden;">
+                            <div style="height: 8px; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); border-radius: 8px; width: ${progress}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            document.getElementById('milestones-list').innerHTML = html;
+        }
+        
+        function doWithdrawal() {
+            const amount = prompt('Hoeveel wil je opnemen? (Beschikbaar: €' + bankroll.toFixed(2) + ')');
+            if (!amount) return;
+            
+            const withdrawAmount = parseFloat(amount);
+            if (isNaN(withdrawAmount) || withdrawAmount <= 0 || withdrawAmount > bankroll) {
+                alert('Ongeldig bedrag');
+                return;
+            }
+            
+            const note = prompt('Notitie (optioneel):') || '';
+            
+            withdrawals.push({
+                amount: withdrawAmount,
+                note: note,
+                date: new Date().toLocaleString('nl-NL')
+            });
+            
+            bankroll -= withdrawAmount;
+            unitValue = bankroll * (unitPct / 100);
+            document.getElementById('session-unit').textContent = unitValue.toFixed(2);
+            
+            updateDashboard();
+            updateGoals();
+            saveAll();
+            alert('✓ Opname geregistreerd! Nieuwe bankroll: €' + bankroll.toFixed(2));
+        }
+        
+        function updateBreakEven() {
+            if (history.length < 5) {
+                document.getElementById('breakeven-calc').innerHTML = 
+                    '<p class="text-muted">Minimaal 5 weddenschappen nodig voor break-even berekening</p>';
+                return;
+            }
+            
+            const currentProfit = bankroll - startBankroll;
+            const avgStake = history.reduce((sum, b) => sum + b.stake, 0) / history.length;
+            const avgOdds = history.reduce((sum, b) => sum + b.odds, 0) / history.length;
+            const avgWin = avgStake * (avgOdds - 1);
+            
+            let betsNeeded = 0;
+            if (currentProfit < 0) {
+                betsNeeded = Math.ceil(Math.abs(currentProfit) / avgWin);
+            }
+            
+            const html = `
+                <div class="stats-grid">
+                    <div class="stat-card ${currentProfit >= 0 ? 'blue' : 'danger'}">
+                        <div class="stat-label">Huidige Positie</div>
+                        <div class="stat-value">${currentProfit >= 0 ? '+' : ''}€${currentProfit.toFixed(2)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Gem. Inzet</div>
+                        <div class="stat-value">€${avgStake.toFixed(2)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Gem. Winst/Bet</div>
+                        <div class="stat-value">€${avgWin.toFixed(2)}</div>
+                    </div>
+                    <div class="stat-card ${currentProfit >= 0 ? 'blue' : ''}">
+                        <div class="stat-label">Bets tot Break-even</div>
+                        <div class="stat-value">${currentProfit >= 0 ? '✓' : betsNeeded}</div>
+                    </div>
+                </div>
+                <div class="alert ${currentProfit >= 0 ? 'alert-info' : 'alert-warning'}" style="margin-top: 15px; background: ${currentProfit >= 0 ? '#d1ecf1' : '#fff3cd'};">
+                    <strong>💡 Berekening:</strong><br>
+                    ${currentProfit >= 0 ? 
+                        'Je zit al boven break-even! Goed bezig! 🎉' :
+                        `Je hebt ongeveer ${betsNeeded} winnende weddenschappen nodig om break-even te bereiken.`}
+                </div>
+            `;
+            
+            document.getElementById('breakeven-calc').innerHTML = html;
+        }
+        
+        // Settings Functions
+        function saveAlerts() {
+            saveAll();
+            alertSettings.warning = parseInt(document.getElementById('warning-pct').value);
+            saveAll();
+            alertSettings.stop = parseInt(document.getElementById('stop-pct').value);
+            saveAll();
+            alert('✓ Waarschuwingsinstellingen opgeslagen!');
+        }
+        
+        function exportData() {
+            const data = {
+                bankroll, startBankroll, unitValue, unitPct, sessionDate,
+                history, pending, betId, targetBankroll, withdrawals, alertSettings,
+                exportDate: new Date().toISOString()
+            };
+            
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'betting_tracker_backup_' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            alert('✓ Data geëxporteerd!');
+        }
+        
+        function exportCSV() {
+            const csv = 'ID,Datum,Tijd,Wedstrijd,Sport,Competitie,Confidence,Units,Inzet,Odds,Resultaat,Winst/Verlies,Bankroll,Notitie,Combi\n' +
+                history.map(b => 
+                    `${b.id},"${b.date}","${b.time}","${b.match}","${b.sport}","${b.competition}","${b.confidence}",${b.units},${b.stake},${b.odds},"${b.result}",${b.profit || 0},${b.bankroll},"${b.note}",${b.isCombo ? b.comboCount : 'Nee'}`
+                ).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'betting_history_' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+            alert('✓ Historie geëxporteerd naar CSV!');
+        }
+        
+        // Start
+        init();
+        
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('✓ Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
