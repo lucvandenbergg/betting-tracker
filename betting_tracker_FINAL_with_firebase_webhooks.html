@@ -1419,17 +1419,6 @@
         }
         
         // Initialize
-        function init() {
-            document.getElementById('session-date').textContent = sessionDate;
-            document.getElementById('session-unit').textContent = unitValue.toFixed(2);
-            document.getElementById('settings-session-date').textContent = sessionDate;
-            document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
-            document.getElementById('warning-pct').value = alertSettings.warning;
-            document.getElementById('stop-pct').value = alertSettings.stop;
-            updateDashboard();
-            updateMilestones();
-        }
-        
         // Tab switching
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
