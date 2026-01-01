@@ -1,4 +1,4 @@
-const CACHE_NAME = 'betting-tracker-v3-features';
+const CACHE_NAME = 'betting-tracker-v2.2-delete';
 const urlsToCache = [
   './',
   './betting_tracker_FINAL_with_firebase_webhooks.html',
