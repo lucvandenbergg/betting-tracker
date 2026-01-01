@@ -955,6 +955,63 @@
                 </div>
             </div>
             
+            <!-- Custom Sports & Competitions -->
+            <div class="section">
+                <div class="section-title">⚽ Sporten & Competities Beheren</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div class="alert alert-info" style="margin-bottom: 15px;">
+                        <strong>💡 Tip:</strong> Voeg je eigen sporten en competities toe voor snellere invoer.
+                    </div>
+                    
+                    <h4 style="margin-bottom: 10px;">Voeg Sport Toe</h4>
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <input type="text" id="new-sport" placeholder="Bijv. Tennis, Basketbal, Darts..." style="flex: 1;">
+                        <button class="btn btn-primary" onclick="addCustomSport()">➕ Toevoegen</button>
+                    </div>
+                    
+                    <h4 style="margin-bottom: 10px;">Voeg Competitie Toe (Voetbal)</h4>
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <input type="text" id="new-competition" placeholder="Bijv. Keuken Kampioen Divisie..." style="flex: 1;">
+                        <button class="btn btn-primary" onclick="addCustomCompetition()">➕ Toevoegen</button>
+                    </div>
+                    
+                    <h4 style="margin-bottom: 10px;">Huidige Sporten</h4>
+                    <div id="custom-sports-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;"></div>
+                    
+                    <h4 style="margin-bottom: 10px;">Huidige Voetbal Competities</h4>
+                    <div id="custom-competitions-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
+            </div>
+            
+            <!-- Alert Settings -->
+            <div class="section">
+                <div class="section-title">📊 Unit Systeem</div>
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: #f0f4ff; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 14px; color: #666;">Huidige Sessie</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #333;" id="settings-session-date"></div>
+                                <div style="margin-top: 5px;">
+                                    <strong>Unit Waarde:</strong> €<span id="settings-unit-value">2.00</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="updateSession()">🔄 Update Sessie</button>
+                        </div>
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+                            <small class="text-muted">💡 De unit-waarde wordt vastgezet aan het begin van elke sessie en blijft constant voor alle weddenschappen van die sessie.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Basis Unit Percentage (% van bankroll)</label>
+                        <input type="number" id="unit-pct" value="1" min="0.1" max="5" step="0.1">
+                        <small class="text-muted">Standaard: 1% - Pas dit alleen aan als je weet wat je doet</small>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSettings()">Opslaan</button>
+                </div>
+            </div>
+            
             <!-- Alert Settings -->
             <div class="section">
                 <div class="section-title">🔔 Waarschuwingen</div>
@@ -1034,6 +1091,12 @@
         // Milestone tracking (to prevent duplicate notifications)
         let reachedMilestones = [];
         
+        // Custom Sports & Competitions
+        let customSports = [];
+        let customCompetitions = {
+            'Voetbal': ['Eredivisie', 'Premier League', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Champions League', 'Europa League', 'Conference League', 'Internationaal Voetbal']
+        };
+        
         // Initialize
         function init() {
             // Load from LocalStorage first
@@ -1052,6 +1115,11 @@
             document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
             document.getElementById('warning-pct').value = alertSettings.warning;
             document.getElementById('stop-pct').value = alertSettings.stop;
+            
+            // Update custom sports/competitions
+            updateCustomSportsDisplay();
+            updateCompetitionDropdowns();
+            
             updateDashboard();
             updateMilestones();
             
@@ -1078,6 +1146,8 @@
                 withdrawals,
                 alertSettings,
                 reachedMilestones,
+                customSports,
+                customCompetitions,
                 lastSaved: new Date().toISOString()
             };
             localStorage.setItem('bettingTracker', JSON.stringify(data));
@@ -1099,6 +1169,10 @@
                     withdrawals = data.withdrawals || [];
                     alertSettings = data.alertSettings || { warning: 25, stop: 50 };
                     reachedMilestones = data.reachedMilestones || [];
+                    customSports = data.customSports || [];
+                    customCompetitions = data.customCompetitions || {
+                        'Voetbal': ['Eredivisie', 'Premier League', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Champions League', 'Europa League', 'Conference League', 'Internationaal Voetbal']
+                    };
                     console.log('✓ Data geladen van LocalStorage');
                 } catch (e) {
                     console.error('Error loading from LocalStorage:', e);
@@ -1233,6 +1307,8 @@
                     withdrawals,
                     alertSettings,
                     reachedMilestones,
+                    customSports,
+                    customCompetitions,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
@@ -1266,6 +1342,8 @@
                     withdrawals = data.withdrawals || withdrawals;
                     alertSettings = data.alertSettings || alertSettings;
                     reachedMilestones = data.reachedMilestones || reachedMilestones;
+                    customSports = data.customSports || customSports;
+                    customCompetitions = data.customCompetitions || customCompetitions;
                     
                     // Save to LocalStorage
                     saveToLocalStorage();
@@ -1273,6 +1351,8 @@
                     // Update UI
                     updateDashboard();
                     updateMilestones();
+                    updateCustomSportsDisplay();
+                    updateCompetitionDropdowns();
                     
                     lastSyncTime = new Date().toLocaleString('nl-NL');
                     document.getElementById('last-sync').textContent = lastSyncTime;
@@ -1408,6 +1488,257 @@
         }
         
         // ============================================
+        // CUSTOM SPORTS & COMPETITIONS
+        // ============================================
+        
+        function addCustomSport() {
+            const sport = document.getElementById('new-sport').value.trim();
+            if (!sport) {
+                alert('Vul een sport naam in');
+                return;
+            }
+            
+            if (customSports.includes(sport)) {
+                alert('Deze sport bestaat al');
+                return;
+            }
+            
+            customSports.push(sport);
+            customCompetitions[sport] = [];
+            document.getElementById('new-sport').value = '';
+            updateCustomSportsDisplay();
+            saveAll();
+            alert('✓ Sport toegevoegd: ' + sport);
+        }
+        
+        function addCustomCompetition() {
+            const comp = document.getElementById('new-competition').value.trim();
+            if (!comp) {
+                alert('Vul een competitie naam in');
+                return;
+            }
+            
+            if (customCompetitions['Voetbal'].includes(comp)) {
+                alert('Deze competitie bestaat al');
+                return;
+            }
+            
+            customCompetitions['Voetbal'].push(comp);
+            document.getElementById('new-competition').value = '';
+            updateCustomSportsDisplay();
+            updateCompetitionDropdowns();
+            saveAll();
+            alert('✓ Competitie toegevoegd: ' + comp);
+        }
+        
+        function removeCustomSport(sport) {
+            if (confirm('Weet je zeker dat je "' + sport + '" wilt verwijderen?')) {
+                customSports = customSports.filter(s => s !== sport);
+                delete customCompetitions[sport];
+                updateCustomSportsDisplay();
+                saveAll();
+            }
+        }
+        
+        function removeCustomCompetition(comp) {
+            if (confirm('Weet je zeker dat je "' + comp + '" wilt verwijderen?')) {
+                customCompetitions['Voetbal'] = customCompetitions['Voetbal'].filter(c => c !== comp);
+                updateCustomSportsDisplay();
+                updateCompetitionDropdowns();
+                saveAll();
+            }
+        }
+        
+        function updateCustomSportsDisplay() {
+            // Sports list
+            const sportsList = document.getElementById('custom-sports-list');
+            if (customSports.length === 0) {
+                sportsList.innerHTML = '<p class="text-muted">Nog geen custom sporten toegevoegd</p>';
+            } else {
+                sportsList.innerHTML = customSports.map(sport => `
+                    <span style="background: #667eea; color: white; padding: 8px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px;">
+                        ${sport}
+                        <button onclick="removeCustomSport('${sport}')" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px;">×</button>
+                    </span>
+                `).join('');
+            }
+            
+            // Competitions list (only default ones, user can't delete these)
+            const compList = document.getElementById('custom-competitions-list');
+            const defaultComps = ['Eredivisie', 'Premier League', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Champions League', 'Europa League', 'Conference League', 'Internationaal Voetbal'];
+            const customComps = customCompetitions['Voetbal'].filter(c => !defaultComps.includes(c));
+            
+            const defaultHTML = defaultComps.map(comp => `
+                <span style="background: #e0e0e0; color: #333; padding: 8px 12px; border-radius: 20px;">
+                    ${comp}
+                </span>
+            `).join('');
+            
+            const customHTML = customComps.map(comp => `
+                <span style="background: #4facfe; color: white; padding: 8px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px;">
+                    ${comp}
+                    <button onclick="removeCustomCompetition('${comp}')" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px;">×</button>
+                </span>
+            `).join('');
+            
+            compList.innerHTML = defaultHTML + customHTML;
+        }
+        
+        function updateCompetitionDropdowns() {
+            // Update dropdown in place bet form
+            const dropdown = document.getElementById('bet-football');
+            dropdown.innerHTML = customCompetitions['Voetbal'].map(comp => 
+                `<option value="${comp}">${comp}</option>`
+            ).join('');
+            
+            // Update quick bet dropdown
+            const quickDropdown = document.getElementById('quick-competition');
+            quickDropdown.innerHTML = customCompetitions['Voetbal'].slice(0, 5).map(comp => 
+                `<option value="${comp}">${comp}</option>`
+            ).join('');
+        }
+        
+        // ============================================
+        // BET EDITING
+        // ============================================
+        
+        function editBet(betId) {
+            const bet = history.find(b => b.id === betId);
+            if (!bet) {
+                alert('Bet niet gevonden');
+                return;
+            }
+            
+            // Create edit modal
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+            
+            modal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+                    <h2 style="margin-bottom: 20px;">✏️ Weddenschap Bewerken</h2>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Wedstrijd</label>
+                        <input type="text" id="edit-match" value="${bet.match}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Datum</label>
+                        <input type="date" id="edit-date" value="${bet.date.split('-').reverse().join('-')}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Tijd</label>
+                        <input type="time" id="edit-time" value="${bet.time}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Odds</label>
+                        <input type="number" id="edit-odds" value="${bet.odds}" step="0.01" min="1.01" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Notitie</label>
+                        <textarea id="edit-note" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; min-height: 60px;">${bet.note || ''}</textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="saveBetEdit(${betId})" style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">💾 Opslaan</button>
+                        <button onclick="this.closest('[style*=fixed]').remove()" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">✕ Annuleren</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        function saveBetEdit(betId) {
+            const bet = history.find(b => b.id === betId);
+            if (!bet) return;
+            
+            // Get new values
+            const newMatch = document.getElementById('edit-match').value.trim();
+            const newDateInput = document.getElementById('edit-date').value;
+            const newTime = document.getElementById('edit-time').value;
+            const newOdds = parseFloat(document.getElementById('edit-odds').value);
+            const newNote = document.getElementById('edit-note').value.trim();
+            
+            if (!newMatch || !newDateInput || !newOdds) {
+                alert('Vul alle verplichte velden in');
+                return;
+            }
+            
+            // Convert date from YYYY-MM-DD to DD-MM-YYYY
+            const dateParts = newDateInput.split('-');
+            const newDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+            
+            // Update bet
+            bet.match = newMatch;
+            bet.date = newDate;
+            bet.time = newTime;
+            bet.odds = newOdds;
+            bet.note = newNote;
+            
+            // Recalculate profit with new odds
+            if (bet.result === 'win') {
+                bet.profit = bet.stake * (newOdds - 1);
+            } else if (bet.result === 'loss') {
+                bet.profit = -bet.stake;
+            }
+            
+            // Re-sort history by date/time
+            history.sort((a, b) => {
+                const dateA = new Date(a.date.split('-').reverse().join('-') + ' ' + a.time);
+                const dateB = new Date(b.date.split('-').reverse().join('-') + ' ' + b.time);
+                return dateB - dateA;
+            });
+            
+            // Recalculate bankroll from start
+            recalculateBankroll();
+            
+            // Close modal
+            document.querySelector('[style*="position: fixed"]').remove();
+            
+            // Update UI
+            updateDashboard();
+            updateHistory();
+            saveAll();
+            
+            alert('✓ Weddenschap bijgewerkt!');
+        }
+        
+        function recalculateBankroll() {
+            // Reset to start
+            bankroll = startBankroll;
+            
+            // Sort history chronologically (oldest first)
+            const chronological = [...history].sort((a, b) => {
+                const dateA = new Date(a.date.split('-').reverse().join('-') + ' ' + a.time);
+                const dateB = new Date(b.date.split('-').reverse().join('-') + ' ' + b.time);
+                return dateA - dateB;
+            });
+            
+            // Recalculate bankroll for each bet
+            for (let bet of chronological) {
+                if (bet.result === 'win') {
+                    bankroll += bet.profit;
+                } else if (bet.result === 'loss') {
+                    bankroll += bet.profit; // profit is negative
+                }
+                // void doesn't change bankroll
+                bet.bankroll = bankroll;
+            }
+            
+            // Resort back to newest first
+            history.sort((a, b) => {
+                const dateA = new Date(a.date.split('-').reverse().join('-') + ' ' + a.time);
+                const dateB = new Date(b.date.split('-').reverse().join('-') + ' ' + b.time);
+                return dateB - dateA;
+            });
+        }
+        
+        // ============================================
         // AUTO-SAVE WRAPPER
         // ============================================
         
@@ -1433,6 +1764,7 @@
             if (tab === 'settings') {
                 document.getElementById('settings-session-date').textContent = sessionDate;
                 document.getElementById('settings-unit-value').textContent = unitValue.toFixed(2);
+                updateCustomSportsDisplay();
             }
         }
         
@@ -1545,7 +1877,8 @@
         // Register bet
         function registerBet(data) {
             betId++;
-            const stake = unitValue * data.confidence;
+            // FIX: Multiply first, THEN round to 2 decimals
+            const stake = Math.round(unitValue * data.confidence * 100) / 100;
             
             const confLabels = {
                 0.5: 'Twijfelachtig',
@@ -1832,6 +2165,9 @@
                             ${bet.result === 'void' ? 'Teruggestort' : (bet.profit >= 0 ? '+' : '') + '€' + bet.profit.toFixed(2)}
                         </div>
                         <small class="text-muted">Bankroll: €${bet.bankroll.toFixed(2)}</small>
+                        <div style="margin-top: 8px;">
+                            <button onclick="editBet(${bet.id})" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">✏️ Bewerken</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
