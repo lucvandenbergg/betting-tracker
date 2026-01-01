@@ -1055,7 +1055,13 @@
         const startBankroll = 200;
         let unitValue = 2.00;
         let unitPct = 1;
-        let sessionDate = new Date().toLocaleDateString('nl-NL');
+        let sessionDate = (() => {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            return `${day}-${month}-${year}`;
+        })();
         let history = [];
         let pending = [];
         let betId = 0;
@@ -1161,7 +1167,7 @@
                     bankroll = data.bankroll || 200;
                     unitValue = data.unitValue || 2.00;
                     unitPct = data.unitPct || 1;
-                    sessionDate = data.sessionDate || new Date().toLocaleDateString('nl-NL');
+                    sessionDate = data.sessionDate || getTodayFormatted();
                     history = data.history || [];
                     pending = data.pending || [];
                     betId = data.betId || 0;
@@ -1634,6 +1640,15 @@
                     </div>
                     
                     <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Resultaat</label>
+                        <select id="edit-result" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white;">
+                            <option value="win" ${bet.result === 'win' ? 'selected' : ''}>✓ Gewonnen</option>
+                            <option value="loss" ${bet.result === 'loss' ? 'selected' : ''}>✗ Verloren</option>
+                            <option value="void" ${bet.result === 'void' ? 'selected' : ''}>↺ Ongeldig (Void)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Odds</label>
                         <input type="number" id="edit-odds" value="${bet.odds}" step="0.01" min="1.01" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
                     </div>
@@ -1661,6 +1676,7 @@
             const newMatch = document.getElementById('edit-match').value.trim();
             const newDateInput = document.getElementById('edit-date').value;
             const newTime = document.getElementById('edit-time').value;
+            const newResult = document.getElementById('edit-result').value;
             const newOdds = parseFloat(document.getElementById('edit-odds').value);
             const newNote = document.getElementById('edit-note').value.trim();
             
@@ -1677,14 +1693,17 @@
             bet.match = newMatch;
             bet.date = newDate;
             bet.time = newTime;
+            bet.result = newResult;
             bet.odds = newOdds;
             bet.note = newNote;
             
-            // Recalculate profit with new odds
-            if (bet.result === 'win') {
+            // Recalculate profit based on new result and odds
+            if (newResult === 'win') {
                 bet.profit = bet.stake * (newOdds - 1);
-            } else if (bet.result === 'loss') {
+            } else if (newResult === 'loss') {
                 bet.profit = -bet.stake;
+            } else if (newResult === 'void') {
+                bet.profit = 0;
             }
             
             // Re-sort history by date/time
@@ -1739,6 +1758,70 @@
         }
         
         // ============================================
+        // DELETE BET
+        // ============================================
+        
+        function deleteBet(betId) {
+            const bet = history.find(b => b.id === betId);
+            if (!bet) {
+                alert('Bet niet gevonden');
+                return;
+            }
+            
+            // Create confirmation dialog with bet details
+            const profitText = bet.result === 'void' 
+                ? 'Teruggestort' 
+                : (bet.profit >= 0 ? '+€' : '€') + bet.profit.toFixed(2);
+            
+            const message = `⚠️ Weet je zeker dat je deze bet wilt verwijderen?
+
+📋 Details:
+• Wedstrijd: ${bet.match}
+• Datum: ${bet.date} ${bet.time}
+• Inzet: €${bet.stake.toFixed(2)} @ ${bet.odds}
+• Resultaat: ${bet.result === 'win' ? 'Gewonnen' : bet.result === 'loss' ? 'Verloren' : 'Void'}
+• Profit: ${profitText}
+
+⚠️ Deze actie kan niet ongedaan worden gemaakt!`;
+            
+            if (!confirm(message)) {
+                return;
+            }
+            
+            // Double confirmation for safety
+            if (!confirm('Laatste kans! Definitief verwijderen?')) {
+                return;
+            }
+            
+            // Remove bet from history
+            history = history.filter(b => b.id !== betId);
+            
+            // Recalculate everything from start
+            recalculateBankroll();
+            
+            // Update UI
+            updateDashboard();
+            updateHistory();
+            updateStats();
+            saveAll();
+            
+            alert('✓ Bet verwijderd en bankroll herberekend!');
+        }
+        
+        // ============================================
+        // HELPER FUNCTIONS
+        // ============================================
+        
+        // Get today's date in DD-MM-YYYY format with leading zeros
+        function getTodayFormatted() {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            return `${day}-${month}-${year}`;
+        }
+        
+        // ============================================
         // AUTO-SAVE WRAPPER
         // ============================================
         
@@ -1783,7 +1866,7 @@
         // Update session
         function updateSession() {
             if (confirm('Nieuwe sessie starten? Dit herberekent de unit op basis van je huidige bankroll (€' + bankroll.toFixed(2) + ')')) {
-                sessionDate = new Date().toLocaleDateString('nl-NL');
+                sessionDate = getTodayFormatted();
                 unitValue = bankroll * (unitPct / 100);
                 document.getElementById('session-date').textContent = sessionDate;
                 document.getElementById('session-unit').textContent = unitValue.toFixed(2);
@@ -1901,7 +1984,7 @@
                 comboCount: data.comboCount,
                 result: data.result,
                 unitValue: unitValue,
-                date: new Date().toLocaleDateString('nl-NL'),
+                date: getTodayFormatted(),
                 time: new Date().toLocaleTimeString('nl-NL')
             };
             
@@ -2048,7 +2131,7 @@
             }
             
             // Today
-            const today = new Date().toLocaleDateString('nl-NL');
+            const today = getTodayFormatted();
             const todayBets = history.filter(b => b.date === today && b.result !== 'void');
             const todayProfit = todayBets.reduce((sum, b) => sum + (b.profit || 0), 0);
             document.getElementById('today-profit').textContent = (todayProfit >= 0 ? '+' : '') + '€' + todayProfit.toFixed(2);
@@ -2165,8 +2248,9 @@
                             ${bet.result === 'void' ? 'Teruggestort' : (bet.profit >= 0 ? '+' : '') + '€' + bet.profit.toFixed(2)}
                         </div>
                         <small class="text-muted">Bankroll: €${bet.bankroll.toFixed(2)}</small>
-                        <div style="margin-top: 8px;">
-                            <button onclick="editBet(${bet.id})" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">✏️ Bewerken</button>
+                        <div style="margin-top: 8px; display: flex; gap: 5px;">
+                            <button onclick="editBet(${bet.id})" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px; flex: 1;">✏️ Bewerken</button>
+                            <button onclick="deleteBet(${bet.id})" class="btn btn-danger" style="padding: 4px 12px; font-size: 12px; flex: 1;">🗑️ Verwijderen</button>
                         </div>
                     </div>
                 </div>
@@ -2192,7 +2276,7 @@
                     pending = [];
                     betId = 0;
                     unitValue = 2.00;
-                    sessionDate = new Date().toLocaleDateString('nl-NL');
+                    sessionDate = getTodayFormatted();
                     targetBankroll = null;
                     withdrawals = [];
                     document.getElementById('session-date').textContent = sessionDate;
